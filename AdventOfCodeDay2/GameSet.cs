@@ -11,18 +11,10 @@
 
             foreach (var line in input.Split(',', StringSplitOptions.TrimEntries))
             {
-                if (line.Contains(Keywords[0]))
-                {
-                    result.CubesSet.RedCubesCount = int.Parse(line.Split(' ')[0]);
-                }
-                else if (line.Contains(Keywords[1]))
-                {
-                    result.CubesSet.BlueCubesCount = int.Parse(line.Split(' ')[0]);
-                }
-                else if (line.Contains(Keywords[2]))
-                {
-                    result.CubesSet.GreenCubesCount = int.Parse(line.Split(' ')[0]);
-                }
+                var number = int.Parse(line.Split(' ')[0]);
+                result.CubesSet.RedCubesCount = line.Contains(Keywords[0]) ? number : result.CubesSet.RedCubesCount;
+                result.CubesSet.BlueCubesCount = line.Contains(Keywords[1]) ? number : result.CubesSet.BlueCubesCount;
+                result.CubesSet.GreenCubesCount = line.Contains(Keywords[2]) ? number : result.CubesSet.GreenCubesCount;
             }
 
             return result;
