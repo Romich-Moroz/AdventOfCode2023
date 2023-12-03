@@ -23,7 +23,8 @@
                 {
                     if (lines[i][j] is '*')
                     {
-                        var gearNumbers = numbers.Where(n => n.IsCloseToGear(i, j)).Select(n => n.NumberInfo.NumberValue).ToList();
+                        var gearNumbers = numbers.Where(n => n.NumberInfo.LineId <= i + 1 && n.NumberInfo.LineId >= i - 1 && n.IsCloseToGear(i, j)).
+                                                           Select(n => n.NumberInfo.NumberValue).ToList();
 
                         if (gearNumbers.Count == 2)
                         {
