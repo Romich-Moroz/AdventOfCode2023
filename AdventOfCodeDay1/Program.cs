@@ -1,9 +1,15 @@
-﻿using AdventOfCode.Input;
-
-namespace AdventOfCodeDay1
+﻿namespace AdventOfCodeDay1
 {
     public class Program
     {
+        public const int CharToIntegerOffset = 0x30;
+        public static readonly string[] DigitStrings =
+        [
+            "one", "two", "three",
+            "four", "five", "six",
+            "seven", "eight", "nine"
+        ];
+
         public static void Main(string[] args)
         {
             var lines = File.ReadAllLines("../../../input.txt");
@@ -12,8 +18,8 @@ namespace AdventOfCodeDay1
             Console.WriteLine(Task2(lines));
         }
         private static int GetDigitsSum(string input) =>
-            ((input.First(char.IsDigit) - InputConstants.CharToIntegerOffset) * 10) +
-            input.Last(char.IsDigit) - InputConstants.CharToIntegerOffset;
+            ((input.First(char.IsDigit) - CharToIntegerOffset) * 10) +
+            input.Last(char.IsDigit) - CharToIntegerOffset;
 
         private static int Task1(string[] lines) => lines.Sum(GetDigitsSum);
 
@@ -25,13 +31,13 @@ namespace AdventOfCodeDay1
             {
                 if (char.IsDigit(line[i]))
                 {
-                    digits += line[i] - InputConstants.CharToIntegerOffset;
+                    digits += line[i] - CharToIntegerOffset;
                 }
                 else
                 {
-                    for (var j = 0; j < InputConstants.DigitStrings.Length; j++)
+                    for (var j = 0; j < DigitStrings.Length; j++)
                     {
-                        var digitString = InputConstants.DigitStrings[j];
+                        var digitString = DigitStrings[j];
                         if (i + digitString.Length <= line.Length && line.Substring(i, digitString.Length) == digitString)
                         {
                             digits += j + 1;
