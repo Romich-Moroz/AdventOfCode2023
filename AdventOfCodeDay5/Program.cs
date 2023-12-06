@@ -1,4 +1,6 @@
-﻿namespace AdventOfCodeDay5
+﻿using System.Diagnostics;
+
+namespace AdventOfCodeDay5
 {
     internal class Program
     {
@@ -12,14 +14,25 @@
             {
                 if (r1.Start <= r2.Start && r2.Start <= r1.End)
                 {
-                    var end = r1.End < r2.End ? r1.End : r2.End;
-                    IntersectingRange = new Range(r2.Start, end - r2.Start + 1);
-
+                    if (r1.End < r2.End)
+                    {
+                        IntersectingRange = new Range(r2.Start, r1.End - r2.Start + 1);
+                    }
+                    else
+                    {
+                        IntersectingRange = new Range(r2.Start, r2.End - r2.Start + 1);
+                    }
                 }
                 else if (r1.Start <= r2.End && r2.End <= r1.End)
                 {
-                    var start = r1.Start > r2.Start ? r1.Start : r2.Start;
-                    IntersectingRange = new Range(r2.End, r2.End - start + 1);
+                    if (r1.End < r2.End)
+                    {
+                        IntersectingRange = new Range(r1.Start, r1.End - r1.Start + 1);
+                    }
+                    else
+                    {
+                        IntersectingRange = new Range(r1.Start, r2.End - r1.Start + 1);
+                    }                   
                 }
 
                 var minStart = r1.Start < r2.Start ? r1.Start : r2.Start;
@@ -44,8 +57,18 @@
 
             public bool Contains(uint value) => Start <= value && value <= End;
             public bool Contains(Range value) => Start < value.Start && value.End <= End;
-            public bool IntersectsWith(Range value) => (Start <= value.Start && value.Start <= End) || (Start <= value.End && value.End <= End) || Contains(value) || value.Contains(this);
+            public bool IntersectsWith(Range value) => new Intersection(this, value).IntersectingRange is not null;
             public uint GetOffset(uint value) => value - Start;
+
+            public override bool Equals(object? obj)
+            {
+                if (obj is Range r)
+                {
+                    return Start == r.Start && Length == r.Length;
+                }
+
+                return false;
+            }
         }
 
         public class MappedValue
@@ -63,37 +86,11 @@
 
             public uint GetValue(uint key) => Key.GetOffset(key) + Value.Start;
 
-            public MappedValue GetValue(Range key)
-            {
-                var result = new MappedValue() { AppliedMap = key };
-                var intersection = new Intersection(Key, key);
-                if (intersection.IntersectingRange is not null)
-                {
-                    if (intersection.BeforeIntersectionRange is not null && key.IntersectsWith(intersection.BeforeIntersectionRange))
-                    {
-                        result.PendingMap.Add(intersection.BeforeIntersectionRange);
-                    }
-
-                    result.AppliedMap = MapValues(intersection.IntersectingRange);
-                    if (intersection.AfterIntersectionRange is not null && key.IntersectsWith(intersection.AfterIntersectionRange))
-                    {
-                        result.PendingMap.Add(intersection.AfterIntersectionRange);
-                    }
-
-                    return result;
-                }
-
-                return result;
-            }
+            public Range GetValue(Range key) => new(Key.GetOffset(key.Start) + Value.Start, key.Length);
 
             public bool CanMap(uint key) => Key.Contains(key);
             public bool CanMap(Range key) => Key.IntersectsWith(key);
 
-            private Range MapValues(Range range)
-            {
-                var offset = Key.GetOffset(range.Start);
-                return new Range(offset + Value.Start, range.Length);
-            }
 
             public bool IntersectsWith(Range range) => Key.IntersectsWith(range);
         }
@@ -141,9 +138,14 @@
                 for (var i = 0; i < AlmanacMaps.Count; i++)
                 {
                     AlmanacMap? map = AlmanacMaps[i];
-                    IEnumerable<List<Range>> test = result.Select(map.GetValue);
-                    var tmp = test.ToList();
-                    result = test.SelectMany(r => r).ToList();
+                    var tmp = new List<List<Range>>();
+                    foreach(var seed in result)
+                    {
+                        var val = map.GetValue(seed);
+                        tmp.Add(val);
+                    }
+                    var newSeeds = tmp.SelectMany(r => r).ToList();
+                    result = newSeeds;
                 }
 
                 return result;
@@ -171,27 +173,129 @@
             }
 
             public uint GetValue(uint key) => MapEntries.SingleOrDefault(md => md.CanMap(key))?.GetValue(key) ?? key;
+            
             public List<Range> GetValue(Range key)
             {
-                //Returns duplicates thats why its not working
-                IEnumerable<MapEntry> entries = MapEntries.Where(md => md.CanMap(key));
-                if (entries.Any())
+                List<Range> unmappedKeyParts = new List<Range>();
+                List<Range> mappedKeyParts = new List<Range>();
+                List<Range> rangesToExclude = new List<Range>();
+                foreach(var mapEntry in MapEntries)
                 {
-                    IEnumerable<MappedValue> values = entries.Select(md => md.GetValue(key));
-                    var result = new List<Range>();
-                    foreach (MappedValue? value in values)
+                    if (mapEntry.CanMap(key))
                     {
-                        var itemsToRemove = value.PendingMap.Where(pm => entries.Any(e => e.IntersectsWith(pm))).ToList();
-                        itemsToRemove.ForEach(pm => value.PendingMap.Remove(pm));
+                        Intersection intersection = new Intersection(mapEntry.Key, key);
 
-                        result.Add(value.AppliedMap);
-                        result.AddRange(value.PendingMap);
+                        if (intersection.BeforeIntersectionRange is not null && !rangesToExclude.Contains(intersection.BeforeIntersectionRange))
+                        {
+                            Intersection unmappedLeft = new Intersection(intersection.BeforeIntersectionRange, key);
+                            if (unmappedLeft is not null && unmappedLeft.IntersectingRange is not null)
+                            {
+                                unmappedKeyParts.Add(unmappedLeft.IntersectingRange);
+                            }
+                        }
+
+                        if (intersection.IntersectingRange is not null)
+                        {
+                            rangesToExclude.Add(intersection.IntersectingRange);
+                            mappedKeyParts.Add(mapEntry.GetValue(intersection.IntersectingRange));
+                        }
+
+                        if (intersection.AfterIntersectionRange is not null && !rangesToExclude.Contains(intersection.AfterIntersectionRange))
+                        {
+                            var unmappedRight = new Intersection(intersection.AfterIntersectionRange, key);
+                            if (unmappedRight is not null && unmappedRight.IntersectingRange is not null)
+                            {
+                                unmappedKeyParts.Add(unmappedRight.IntersectingRange);
+                            }
+                        }
                     }
 
-                    return result;
+                    var unmappedToRemove = new List<Range>();
+                    var unmappedToAdd = new List<Range>();
+                    foreach(var unmapped in unmappedKeyParts)
+                    {
+                        if (mapEntry.CanMap(unmapped))
+                        {
+                            unmappedToRemove.Add(unmapped);
+
+                            Intersection intersection = new Intersection(mapEntry.Key, unmapped);
+
+                            if (intersection.BeforeIntersectionRange is not null)
+                            {
+                                Intersection unmappedLeft = new Intersection(intersection.BeforeIntersectionRange, unmapped);
+                                if (unmappedLeft is not null && unmappedLeft.IntersectingRange is not null)
+                                {
+                                    unmappedToAdd.Add(unmappedLeft.IntersectingRange);
+                                }
+                            }
+
+                            if (intersection.IntersectingRange is not null && !rangesToExclude.Contains(intersection.IntersectingRange))
+                            {
+                                mappedKeyParts.Add(mapEntry.GetValue(intersection.IntersectingRange));
+                            }
+
+                            if (intersection.AfterIntersectionRange is not null)
+                            {
+                                var unmappedRight = new Intersection(intersection.AfterIntersectionRange, unmapped);
+                                if (unmappedRight is not null && unmappedRight.IntersectingRange is not null)
+                                {
+                                    unmappedToAdd.Add(unmappedRight.IntersectingRange);
+                                }
+                            }
+                        }
+                    }
+                    unmappedKeyParts.AddRange(unmappedToAdd);
+
+                    unmappedToRemove.ForEach(u => unmappedKeyParts.Remove(u));
+
                 }
 
-                return [key];
+                if (mappedKeyParts.Count == 0)
+                {
+                    mappedKeyParts.Add(key);
+                }
+
+                mappedKeyParts.AddRange(unmappedKeyParts);
+                return mappedKeyParts;
+
+
+                //Returns duplicates thats why its not working
+                //IEnumerable<MapEntry> entries = MapEntries.Where(md => md.CanMap(key));
+                //if (entries.Any())
+                //{
+                //    List<MappedValue> values = new List<MappedValue>();
+
+                //    foreach (var entry in entries)
+                //    {
+                //        var value = entry.GetValue(key);
+                //        List<Range> ranges = new List<Range>();
+                //        foreach (var en in value.PendingMap)
+                //        {
+                //            if (entry.CanMap(en))
+                //            {
+                //                values.Add(entry.GetValue(en));
+                //                ranges.Add(en);
+                //            }
+                //        }
+                //        value.PendingMap.RemoveAll(m => ranges.Contains(m));
+                        
+                //        values.Add(value);
+                //    }
+
+                //    var result = new List<Range>();
+                //    foreach (MappedValue? value in values)
+                //    {
+                //        var itemsToRemove = value.PendingMap.Where(pm => entries.Any(e => e.IntersectsWith(pm))).ToList();
+                //        itemsToRemove.ForEach(pm => value.PendingMap.Remove(pm));
+
+                //        result.Add(value.AppliedMap);
+                //        result.AddRange(value.PendingMap);
+                //    }
+
+                //    return result;
+                //}
+
+                //return [key];
             }
         }
 
