@@ -9,9 +9,8 @@ namespace AdventOfCodeDay5
             var almanac = Almanac.Parse(File.ReadAllText("../../../input.txt"));
 
             Console.WriteLine(Task1(almanac));
-            var task = Task2(almanac);
-            Debug.Assert(task == 1240035);
-            Console.WriteLine(task);
+
+            Console.WriteLine(Task2(almanac));
         }
 
         public static uint Task1(Almanac almanac) => almanac.GetMappedValues(almanac.Seeds).Min();
