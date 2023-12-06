@@ -10,7 +10,10 @@
         public static NumberInfo Parse(int lineId, string currentLine, int startIndex)
         {
             int i;
-            for (i = startIndex; i < currentLine.Length && char.IsDigit(currentLine[i]); i++) ;
+            for (i = startIndex; i < currentLine.Length && char.IsDigit(currentLine[i]); i++)
+            {
+                ;
+            }
 
             return new NumberInfo(lineId, startIndex, int.Parse(currentLine[startIndex..i]), i - 1);
         }
