@@ -1,4 +1,4 @@
-﻿Func<long, long, long> getTotalWaysToWin = (dist, rec) => Enumerable.Range(0, (int)dist).Where(i => ((dist - i) * (1 * i)) > rec).Count();
+﻿Func<long, long, long> getTotalWaysToWin = (time, dist) => Enumerable.Range(0, (int)time).Where(i => ((time - i) * (1 * i)) > dist).Count();
 
 List<Tuple<long, long>> task1 = [new(62, 644), new(73, 1023), new(75, 1240), new(65, 1023)];
 List<Tuple<long, long>> task2 = [new(62737565, 644102312401023)];
